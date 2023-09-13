@@ -7,11 +7,10 @@
 
 import UIKit
 
-// MARK: - The model for this tableView
+// MARK: - Our data model for this tableView
 //Section has to be Hashable, in order to be used in diffibale data source
     enum Section{
-        case eldenRring
-        case sekiro
+        case main
     }
 
 
@@ -28,12 +27,6 @@ var users = [User]()
 
 
 
-//Reorder the model list
-func reorderUserList(move userToMove: User, to userAtDestination: User) {
-    let destinationIndex = users.firstIndex(of: userAtDestination) ?? 0
-    users.removeAll { $0.name == userToMove.name }
-    users.insert(userToMove, at: destinationIndex)
-}
 
 
 
@@ -56,39 +49,41 @@ class TableViewController: UITableViewController {
 
         //Initialize tool bar and navigation bar item.
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapAddButton))
+        
         let ascendButton = UIBarButtonItem(image: UIImage(systemName: "chevron.up.square"), style: .plain, target: self, action: #selector(sortAscend))
         let descendButton = UIBarButtonItem(image: UIImage(systemName: "chevron.down.square"), style: .plain, target: self, action: #selector(sortDescend))
         let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: self, action: nil)
         navigationItem.rightBarButtonItems = [addButton, editButtonItem]
         toolbarItems = [ascendButton, flexSpace, descendButton]
 
-        
+        //Initialize tableView
         initTableView()
     }
     
     
     
 
-    //Initialize table view
+    //Initialize tableView
     func initTableView(){
-        
         //Create name for each user model
         names.forEach { name in
             let user = User(name: name)
             users.append(user)
         }
         
+        //Unhide the tool bar
         self.navigationController?.isToolbarHidden = false
         
+        //Initialize data source, create first snapshot, and call sorting method at the beginning.
         configDataSource()
         dataSource.addUser(from: users)
-        sortAscend()
+        //sortAscend()
     }
     
     
     
     // MARK: - Config your data source
-    //Just like cell for raw at index path we too need to config the cell and return it
+    //Just like cellForRawAt tableView dataSource method we've been using all along, we also need to configure the cell and return to our data source class.
     private func configDataSource(){
         dataSource = UserDataSource(tableView: tableView, cellProvider: { tableView, indexPath, user in
             let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
@@ -102,12 +97,16 @@ class TableViewController: UITableViewController {
     
     
     //MARK: - Sorting method
+    
+    //Sort users ascend
     @objc func sortAscend(){
         users.sort {$0.name < $1.name}
+        users.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
         dataSource.addUser(from: users)
     }
     
-    
+    //Sort users descend
     @objc func sortDescend(){
         users.sort {$0.name > $1.name}
         dataSource.addUser(from: users)
@@ -119,11 +118,13 @@ class TableViewController: UITableViewController {
     
     
     
-    //MARK: - Add new users and append to the model array
-    @objc func didTapAddButton(){
+    
+    
+    //MARK: - Add new users
+    
+        @objc func didTapAddButton(){
         let alert = alertService.createUserAlert { name in
         
-            //Add new user to the array, and update dataSource
             let user = User(name: name)
             users.append(user)
             self.dataSource.addUser(from: users)
@@ -136,10 +137,12 @@ class TableViewController: UITableViewController {
     
     
     //MARK: -Grab data
+    //We're still able to use didSelectRowAt method that table view delegate gives us
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         guard let user = dataSource.itemIdentifier(for: indexPath) else { return }
         print(user)
     }
+     
 }
 
 
@@ -151,12 +154,8 @@ class UserDataSource: UITableViewDiffableDataSource<Section, User> {
     
     //Add new item to snapshot
     func addUser(from users: [User]){
-        //Snapshot is very much like commit, diffable data source take this current commit(snapshot) and previous commit in order to figure out what's the different between those two.
-        //After the comparison process above, it will merge commits(snapshot) together without conflict( unlike git, in git sometiems we have to mannualy resolve conflict).
-        //No more tableView misleading reload data that kind of stuff here.
-        
         var newSnapshot = NSDiffableDataSourceSnapshot<Section, User>()
-        newSnapshot.appendSections([Section.eldenRring])
+        newSnapshot.appendSections([Section.main])
         newSnapshot.appendItems(users)
         apply(newSnapshot, animatingDifferences: true)
     }
@@ -167,6 +166,16 @@ class UserDataSource: UITableViewDiffableDataSource<Section, User> {
         var newSnapshot = self.snapshot()
         newSnapshot.deleteItems([user])
         apply(newSnapshot, animatingDifferences: true)
+    }
+    
+    
+    
+    //Reorder the model list
+    func reorderUserList(move userToMove: User, to userAtDestination: User) {
+        let destinationIndex = users.firstIndex(of: userAtDestination) ?? 0
+        users.removeAll { $0.name == userToMove.name }
+        users.insert(userToMove, at: destinationIndex)
+        
     }
     
     
@@ -203,7 +212,7 @@ class UserDataSource: UITableViewDiffableDataSource<Section, User> {
     }
     
     
-    
+    //And the function right here, gives us the parameters for beginning and destination for user row.
     override func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
         guard sourceIndexPath != destinationIndexPath,
                 sourceIndexPath.section == destinationIndexPath.section,
@@ -215,4 +224,5 @@ class UserDataSource: UITableViewDiffableDataSource<Section, User> {
         reorderUserList(move: userToMove, to: userAtDestination)
         addUser(from: users)
     }
+     
 }
