@@ -21,9 +21,11 @@ struct User: Hashable{
     
 }
 
-//Create an array of names for each model
+//Create an array of names for your model
 let names = ["Tarnished", "Greater Will", "Rani", "Marika", "Radagon", "Ezio", "Genichiro", "Ishin", "Emma", "Sekiro"]
 var users = [User]()
+
+
 
 
 //Reorder the model list
@@ -41,7 +43,6 @@ class TableViewController: UITableViewController {
     
     private let alertService = AlertService()
 
-    //Now feed in you Section and User to the data source, and made sure they are both hashable.
     var dataSource: UserDataSource!
     
     
@@ -95,9 +96,9 @@ class TableViewController: UITableViewController {
             cell.textLabel?.text = user.name
             return cell
         })
-
-       
     }
+    
+    
     
     
     //MARK: - Sorting method
@@ -121,21 +122,15 @@ class TableViewController: UITableViewController {
     //MARK: - Add new users and append to the model array
     @objc func didTapAddButton(){
         let alert = alertService.createUserAlert { name in
-            self.addNewUser(with: name)
+        
+            //Add new user to the array, and update dataSource
+            let user = User(name: name)
+            users.append(user)
+            self.dataSource.addUser(from: users)
+            
         }
         present(alert, animated: true)
     }
-    
-    
-    func addNewUser(with name: String){
-        let user = User(name: name)
-        users.append(user)
-        
-        print(users.first?.name ?? "")
-        
-        dataSource.addUser(from: users)
-    }
-    
     
 
     
@@ -150,24 +145,26 @@ class TableViewController: UITableViewController {
 
 
 
+
 // MARK: - Self defined dataSource.
 class UserDataSource: UITableViewDiffableDataSource<Section, User> {
+    
+    //Add new item to snapshot
     func addUser(from users: [User]){
-        //Snapshot is much like commit diffable data source take this current commit(snapshot) and previous commit inorder to figure out what's the different between those two.
-        //After the comparison process above, it will merge commits(snapshot) together without conflict. Not like the old one.
+        //Snapshot is very much like commit, diffable data source take this current commit(snapshot) and previous commit in order to figure out what's the different between those two.
+        //After the comparison process above, it will merge commits(snapshot) together without conflict( unlike git, in git sometiems we have to mannualy resolve conflict).
         //No more tableView misleading reload data that kind of stuff here.
-        var newSnapshot = NSDiffableDataSourceSnapshot<Section, User>()
         
+        var newSnapshot = NSDiffableDataSourceSnapshot<Section, User>()
         newSnapshot.appendSections([Section.eldenRring])
         newSnapshot.appendItems(users)
         apply(newSnapshot, animatingDifferences: true)
     }
     
     
+    //Delete item in snapshot
     func deleteUser(delete user: User){
         var newSnapshot = self.snapshot()
-        
-        //newSnapshot.deleteSections([Section.main])
         newSnapshot.deleteItems([user])
         apply(newSnapshot, animatingDifferences: true)
     }
@@ -200,9 +197,11 @@ class UserDataSource: UITableViewDiffableDataSource<Section, User> {
     }
     
     
+    //Same as editing row, this function below allow us to move row.
     override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
         true
     }
+    
     
     
     override func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
